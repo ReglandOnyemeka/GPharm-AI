@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en-NG">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPharm AI Lagos — Smart Pharmacy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Libraries: Supabase (DB) & SheetJS (Excel) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --green-deep: #0a4a3a; --green-bright: #1e9070; --gold: #c8963c; --ai-purple: #8b5cf6; --border: #e0e6e2; --white: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: #faf9f6; color: #1a1c1a; }
+        nav { background: var(--white); padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
+        .logo { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 800; color: var(--green-deep); cursor: pointer; }
+        .nav-btn { background: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; }
+        .nav-btn.active { background: var(--green-deep); color: white; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+        .view { display: none; } .view.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .ai-banner { background: #f5f3ff; border: 1px solid var(--ai-purple); padding: 1.2rem; border-radius: 12px; margin-bottom: 1.5rem; display: none; }
+        .compliance-note { font-size: 0.7rem; font-style: italic; color: #6b7280; border-top: 1px solid #ddd; margin-top: 10px; padding-top: 5px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.2rem; }
+        .card { background: white; padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; flex-direction: column; }
+        .price { color: var(--gold); font-weight: 700; font-size: 1.2rem; margin: 8px 0; }
+        .btn-ai { background: var(--ai-purple); color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; margin-bottom: 8px; }
+        .btn-primary { background: var(--green-deep); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 700; }
+        input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; outline: none; }
+        .apk-download { text-align: center; margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 2rem; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo" onclick="location.reload()">GPharm <small style="color:var(--ai-purple); font-size: 0.6rem;">AI LAGOS</small></div>
+    <div id="nav-links">
+        <button class="nav-btn active" id="nav-btn-home" onclick="showView('home')">Store</button>
+        <button class="nav-btn" id="nav-btn-admin" onclick="handleLogin()">Pharventory</button>
+    </div>
+</nav>
+
+<div id="view-home" class="view active">
+    <div class="container">
+        <div id="ai-banner-public" class="ai-banner">
+            <div id="ai-content-public"></div>
+            <div class="compliance-note">⚠️ <strong>Clinical Disclaimer:</strong> AI suggestions are for informational purposes only. A licensed GPharm pharmacist must verify all substitutions before use.</div>
+        </div>
+        <input type="text" id="input-search-public" placeholder="Search brands or symptoms (e.g. Cough)..." onkeyup="renderPublic(this.value)">
+        <div id="public-grid" class="grid"></div>
+        <div class="apk-download">
+            <a href="#" id="apk-link" style="text-decoration:none; color:var(--ink); font-weight:700; font-size:0.8rem; background:#eee; padding:10px 20px; border-radius:30px;">📥 Download GPharm Lagos APK</a>
+        </div>
+    </div>
+</div>
+
+<div id="view-admin" class="view">
+    <div class="container">
+        <div id="ai-banner-admin" class="ai-banner">
+            <div id="ai-content-admin"></div>
+            <div class="compliance-note">⚠️ <strong>Decision Support:</strong> Verify molecule compatibility and patient history before confirming substitution.</div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h2>Live Inventory</h2>
+            <div style="display:flex; gap:8px;">
+                <input type="file" id="excel-file" style="display:none;" onchange="handleExcel(this)">
+                <button class="nav-btn" onclick="document.getElementById('excel-file').click()">Import Excel</button>
+                <button class="nav-btn" style="background:var(--gold); color:white;" onclick="openAddModal()">+ Add Product</button>
+            </div>
+        </div>
+        <div id="admin-grid" class="grid"></div>
+    </div>
+</div>
+
+<!-- Modal: Add Product -->
+<div id="modal-add" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:white; padding:2rem; border-radius:20px; width:90%; max-width:500px;">
+        <h2 style="margin-bottom:1rem;">New Medication</h2>
+        <input type="text" id="m-name" placeholder="Name">
+        <input type="text" id="m-api" placeholder="Active Ingredient">
+        <select id="m-cat">
+            <option>Analgesics</option><option>Antibiotics</option><option>Antimalarials</option><option>Supplements</option><option>Hygiene</option>
+        </select>
+        <input type="number" id="m-price" placeholder="Price (₦)">
+        <input type="number" id="m-stock" placeholder="Stock Qty">
+        <label><input type="checkbox" id="m-pom"> Prescription Required (POM)</label><br><br>
+        <button class="btn-primary" onclick="saveToCloud()">Save to Cloud</button>
+        <button class="nav-btn" style="width:100%; margin-top:10px;" onclick="document.getElementById('modal-add').style.display='none'">Cancel</button>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
