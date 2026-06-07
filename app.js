@@ -125,4 +125,7 @@ window.addToPublicCart = function(id) {
     window.updateCartUI();
 };
 
-// ... (Include updateCartUI, checkoutPublic, etc. using the window. prefix
+// ... (Include updateCartUI, checkoutPublic, etc. using the window. prefix)
+
+// START
+init();
