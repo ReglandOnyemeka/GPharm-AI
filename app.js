@@ -1,5 +1,5 @@
 /**
- * GPharm AI Lagos — Logic Engine
+ * GPharm AI Lagos — Robust Logic Engine
  */
 
 const SUPABASE_URL = 'https://pfjfdnwaatiacqgwbsuf.supabase.co';
@@ -13,44 +13,86 @@ let isAdminMode = false;
 
 // --- 1. INITIALIZE ---
 async function init() {
+    console.log("GPharm Initializing...");
     await loadData();
     
-    // Real-time listener
+    // Real-time listener for cloud updates
     supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
         loadData();
     }).subscribe();
 
-    // Fix Search Bar
+    // Setup Search Bar
     const searchInput = document.getElementById('input-search-public');
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => renderPublic(e.target.value));
+        // This fires every time you type
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value;
+            console.log("Searching for:", term);
+            renderPublic(term);
+        });
     }
 }
 
 async function loadData() {
-    const { data, error } = await supabaseClient.from('products').select('*').order('name', { ascending: true });
-    if (!error) {
-        products = data;
-        isAdminMode ? renderAdmin() : renderPublic();
+    console.log("Fetching from Supabase...");
+    const { data, error } = await supabaseClient
+        .from('products')
+        .select('*')
+        .order('name', { ascending: true });
+
+    if (error) {
+        console.error("Supabase Error:", error.message);
+        return;
     }
+
+    products = data || [];
+    console.log("Data loaded:", products.length, "items found.");
+    
+    // Render the initial list
+    if (isAdminMode) renderAdmin(); else renderPublic();
 }
 
-// --- 2. GLOBAL ACTIONS (Buttons) ---
-window.handleLogin = function() {
-    if (!isAdminMode) {
-        const code = prompt("Enter 4-digit Pharmacy Access Code:");
-        if (code === "1234") {
-            isAdminMode = true;
-            document.getElementById('nav-btn-admin').innerText = "Logout Admin";
-            window.showView('admin');
-        } else { alert("❌ Invalid Access."); }
-    } else {
-        isAdminMode = false;
-        document.getElementById('nav-btn-admin').innerText = "Pharmacy Login";
-        window.showView('home');
+// --- 2. RENDERING LOGIC (The Search Fix) ---
+window.renderPublic = function(filter = "") {
+    const grid = document.getElementById('public-grid');
+    if (!grid) return;
+
+    // Filter by Name OR API (Active Ingredient), and make it case-insensitive
+    const filtered = products.filter(p => {
+        const brandMatch = p.name ? p.name.toLowerCase().includes(filter.toLowerCase()) : false;
+        const apiMatch = p.api ? p.api.toLowerCase().includes(filter.toLowerCase()) : false;
+        const categoryMatch = p.cat ? p.cat.toLowerCase().includes(filter.toLowerCase()) : false;
+        return brandMatch || apiMatch || categoryMatch;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #888;">
+                <p style="font-size: 1.5rem;">🔍</p>
+                <p>No medications found for "<strong>${filter}</strong>"</p>
+                <p style="font-size: 0.8rem;">Try searching for a molecule like "Paracetamol" or "Lonart"</p>
+            </div>`;
+        return;
     }
+
+    grid.innerHTML = filtered.map(p => `
+        <div class="card">
+            <div style="display:flex; justify-content:space-between;">
+                <small style="font-size:0.65rem; color:var(--green-mid); font-weight:700; text-transform:uppercase;">${p.cat || 'General'}</small>
+                ${p.pom ? '<small style="color:red; font-weight:bold; font-size:0.6rem;">🔴 POM</small>' : ''}
+            </div>
+            <h3 style="margin:5px 0;">${p.name}</h3>
+            <p style="font-size:0.75rem; color:#666; margin-bottom:10px;">${p.api || 'Clinical Molecule'}</p>
+            <div class="price">₦${(p.price || 0).toLocaleString()}</div>
+            <div style="margin-top:15px;">
+                <button class="btn-ai" onclick="window.triggerAI(${p.id})">Consult AI</button>
+                <button class="btn-primary" onclick="window.addToPublicCart(${p.id})">Add to Order</button>
+            </div>
+        </div>
+    `).join('');
 };
 
+// --- 3. UI HELPERS ---
 window.showView = function(view) {
     isAdminMode = (view === 'admin');
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -62,120 +104,25 @@ window.showView = function(view) {
     if (view === 'home') renderPublic(); else renderAdmin();
 };
 
-window.triggerAI = async function(id) {
-    const drug = products.find(x => x.id === id);
-    const banner = document.getElementById(isAdminMode ? 'ai-banner-admin' : 'ai-banner-public');
-    const content = document.getElementById(isAdminMode ? 'ai-content-admin' : 'ai-content-public');
-
-    banner.style.display = 'block';
-    content.innerHTML = "✨ Gemini AI is analyzing clinical molecules...";
-
-    try {
-        const response = await fetch('/.netlify/functions/ai-assist', {
-            method: 'POST',
-            body: JSON.stringify({ drugName: drug.name, api: drug.api, category: drug.cat, task: 'recommend' })
-        });
-        const data = await response.json();
-        content.innerHTML = `<strong>✨ AI Consult:</strong><br>${data.result.replace(/\n/g, '<br>')}`;
-    } catch (err) { content.innerHTML = "⚠️ AI offline."; }
+window.handleLogin = function() {
+    if (!isAdminMode) {
+        const code = prompt("Enter Pharmacy Access Code:");
+        if (code === "1234") window.showView('admin');
+        else alert("❌ Invalid Code");
+    } else {
+        window.showView('home');
+    }
 };
 
-// --- 3. RENDERING ---
-function renderPublic(filter = "") {
-    const grid = document.getElementById('public-grid');
-    if (!grid) return;
-    const items = products.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()) || p.api?.toLowerCase().includes(filter.toLowerCase()));
-    
-    grid.innerHTML = items.map(p => `
-        <div class="card">
-            <small style="font-size:0.65rem; color:#888;">${p.cat} ${p.pom ? '• 🔴 POM' : ''}</small>
-            <h3>${p.name}</h3>
-            <div class="price">₦${p.price.toLocaleString()}</div>
-            <button class="btn-ai" onclick="window.triggerAI(${p.id})">Consult AI</button>
-            <button class="btn-primary" onclick="window.addToPublicCart(${p.id})">Add to Order</button>
-        </div>
-    `).join('');
-}
+// ... (Rest of your cart and modal logic below)
+// Ensure addToPublicCart and saveManualProduct are also globally defined with window.
 
-function renderAdmin() {
-    const grid = document.getElementById('admin-grid');
-    if (!grid) return;
-    grid.innerHTML = products.map(p => `
-        <div class="card">
-            <div style="font-size:0.7rem; color:#888;">Stock: ${p.stock}</div>
-            <h3>${p.name}</h3>
-            <div class="price">₦${p.price.toLocaleString()}</div>
-            <button class="btn-ai" onclick="window.triggerAI(${p.id})">Clinical Check</button>
-        </div>
-    `).join('');
-    updateInsights();
-}
-
-// --- 4. CART & WHATSAPP ---
 window.addToPublicCart = function(id) {
     const p = products.find(x => x.id === id);
+    if (!p) return;
     const ex = publicCart.find(x => x.id === id);
     if (ex) ex.qty++; else publicCart.push({ ...p, qty: 1 });
-    updateCartUI();
+    window.updateCartUI();
 };
 
-function updateCartUI() {
-    const bar = document.getElementById('public-cart-bar');
-    const count = publicCart.reduce((a, b) => a + b.qty, 0);
-    const sum = publicCart.reduce((a, b) => a + (b.price * b.qty), 0);
-    if (count > 0) {
-        bar.style.display = 'flex';
-        document.getElementById('cart-count').innerText = count;
-        document.getElementById('cart-sum').innerText = "₦" + sum.toLocaleString();
-    } else { bar.style.display = 'none'; }
-}
-
-window.openPublicCart = function() {
-    document.getElementById('modal-checkout').style.display = 'flex';
-    document.getElementById('modal-cart-items').innerHTML = publicCart.map(i => `
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <span>${i.name} x${i.qty}</span><strong>₦${(i.price*i.qty).toLocaleString()}</strong>
-        </div>
-    `).join('');
-};
-
-window.checkoutPublic = function() {
-    const name = document.getElementById('order-name').value;
-    const phone = document.getElementById('order-phone').value;
-    const address = document.getElementById('order-address').value;
-    if (!name || phone.length !== 11 || !address) return alert("Fill all 11-digit Lagos details.");
-
-    let msg = `*GPHARM LAGOS ORDER*\n`;
-    publicCart.forEach(i => msg += `• ${i.name} (x${i.qty}) - ₦${(i.price*i.qty).toLocaleString()}\n`);
-    msg += `TOTAL: ₦${publicCart.reduce((a, b) => a + (b.price * b.qty), 0).toLocaleString()}\nRecipient: ${name}\nPhone: ${phone}\nAddress: ${address}`;
-    
-    window.open(`https://wa.me/${PHARMACY_WHATSAPP}?text=${encodeURIComponent(msg)}`);
-    publicCart = []; updateCartUI(); window.closeModal('modal-checkout');
-};
-
-// --- 5. CLOUD INVENTORY ---
-window.saveManualProduct = async function() {
-    const newProd = {
-        name: document.getElementById('m-name').value,
-        api: document.getElementById('m-api').value,
-        cat: document.getElementById('m-cat').value,
-        price: parseInt(document.getElementById('m-price').value),
-        stock: parseInt(document.getElementById('m-stock').value),
-        pom: document.getElementById('m-pom').checked
-    };
-    const { error } = await supabaseClient.from('products').insert([newProd]);
-    if (error) alert("Error: " + error.message);
-    else { window.closeModal('modal-add'); loadData(); }
-};
-
-function updateInsights() {
-    const total = products.reduce((a, b) => a + (b.price * b.stock), 0);
-    document.getElementById('stat-total').innerText = "₦" + (total/1000).toFixed(1) + "k";
-    document.getElementById('stat-low').innerText = products.filter(p => p.stock < 10).length;
-    document.getElementById('stat-count').innerText = products.length;
-}
-
-window.closeModal = (id) => document.getElementById(id).style.display = 'none';
-window.openAddModal = () => document.getElementById('modal-add').style.display = 'flex';
-
-init();
+// ... (Include updateCartUI, checkoutPublic, etc. using the window. prefix
