@@ -5,35 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPharm AI Lagos — Smart Pharmacy</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --green-deep: #0a4a3a; --green-mid: #166b54; --green-bright: #1e9070; --gold: #c8963c; --white: #fff; --border: #e0e6e2; --ai-purple: #8b5cf6; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'DM Sans', sans-serif; background: #faf9f6; color: #1a1c1a; line-height: 1.5; }
+        
+        /* NAVIGATION */
         nav { background: var(--white); padding: 0.8rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
         .logo { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 800; color: var(--green-deep); cursor: pointer; }
-        .nav-btn { background: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; }
-        .nav-btn.active { background: var(--green-deep); color: white; }
+        .nav-btn { background: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+        .nav-btn.active { background: var(--green-deep); color: white; border-color: var(--green-deep); }
+        .pharm-login-btn { border: 1.5px solid var(--green-deep) !important; color: var(--green-deep) !important; margin-left: 8px; }
+
+        /* VIEWS */
         .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
         .view { display: none; } .view.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* HERO & SEARCH */
         .hero { background: var(--green-deep); color: white; padding: 3rem 1.5rem; border-radius: 16px; text-align: center; margin-bottom: 2rem; }
-        .search-container { position: relative; margin-bottom: 2rem; }
-        #input-search-public { width: 100%; padding: 1.2rem; border-radius: 50px; border: 1px solid var(--border); font-size: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); outline: none; }
+        .hero h1 { font-family: 'Playfair Display', serif; font-size: 2.2rem; margin-bottom: 0.5rem; }
+        #input-search-public { width: 100%; padding: 1.2rem 1.5rem; border-radius: 50px; border: 1px solid var(--border); font-size: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); outline: none; margin-bottom: 2rem; }
+
+        /* GRID & CARDS */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-        .card { background: white; padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; transition: 0.2s; }
-        .card:hover { transform: translateY(-5px); }
+        .card { background: white; padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .card:hover { transform: translateY(-5px); border-color: var(--green-mid); }
+        .card .cat { font-size: 0.65rem; font-weight: 700; color: var(--green-mid); text-transform: uppercase; margin-bottom: 5px; }
+        .card h3 { font-size: 1.2rem; color: var(--green-deep); margin-bottom: 5px; }
+        .card .api-text { font-size: 0.8rem; color: #666; margin-bottom: 12px; height: 1.2rem; overflow: hidden; }
         .price { color: var(--gold); font-weight: 700; font-size: 1.4rem; margin-top: auto; }
-        .btn-ai { background: var(--ai-purple); color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; }
+
+        /* AI ELEMENTS */
+        .btn-ai { background: var(--ai-purple); color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; width: 100%; }
+        .ai-banner { background: #f5f3ff; border: 1px solid var(--ai-purple); padding: 1.2rem; border-radius: 12px; margin-bottom: 1.5rem; display: none; font-size: 0.9rem; }
+
+        /* BUTTONS */
         .btn-primary { background: var(--green-deep); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 10px; }
-        .ai-banner { background: #f5f3ff; border: 1.5px solid var(--ai-purple); padding: 1.2rem; border-radius: 12px; margin-bottom: 1.5rem; display: none; }
+        
+        /* CART BAR */
         #public-cart-bar { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: var(--green-deep); color: white; width: 90%; max-width: 450px; padding: 1.2rem 2rem; border-radius: 50px; cursor: pointer; display: none; justify-content: space-between; align-items: center; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+        /* MODALS */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); }
         .modal-content { background: white; padding: 2rem; border-radius: 24px 24px 0 0; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
         .form-group { margin-bottom: 15px; }
         .form-group label { font-size: 0.8rem; font-weight: 700; color: var(--green-deep); display: block; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; outline: none; }
+
+        /* ADMIN DASHBOARD */
         #insights-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
         .stat-card { background: white; padding: 1.2rem; border-radius: 16px; border: 1px solid var(--border); }
         .stat-card label { font-size: 0.7rem; color: #888; font-weight: 700; text-transform: uppercase; }
@@ -46,35 +69,36 @@
     <div class="logo" onclick="window.location.reload()">GPharm <small style="color:var(--ai-purple); font-size: 0.6rem;">AI LAGOS</small></div>
     <div>
         <button class="nav-btn active" id="nav-btn-home" onclick="window.showView('home')">MyPharmacy</button>
-        <button class="nav-btn" id="nav-btn-admin" onclick="window.handleLogin()">Pharmacy Login</button>
+        <button class="nav-btn pharm-login-btn" id="nav-btn-admin" onclick="window.handleLogin()">Pharmacy Login</button>
     </div>
 </nav>
 
-<!-- VIEW: HOME -->
+<!-- STOREFRONT VIEW -->
 <div id="view-home" class="view active">
     <div class="container">
         <div class="hero">
             <h1>Healthcare You Can Trust</h1>
-            <p>Licensed Pharmacy • Fast Delivery • Genuine Medicine</p>
+            <p>Verified Medications • Fast Delivery • Licensed Pharmacy</p>
         </div>
         <div id="ai-banner-public" class="ai-banner">
             <div id="ai-content-public"></div>
             <p style="font-size:0.7rem; color:#6b7280; margin-top:10px; border-top:1px solid #ddd; padding-top:5px;">⚠️ Clinical Note: AI advice is for guidance only. Consult our pharmacist.</p>
         </div>
-        <div class="search-container">
-            <input type="text" id="input-search-public" placeholder="Search by name, symptom, or molecule...">
-        </div>
+        <input type="text" id="input-search-public" placeholder="Search by name, symptom, or ingredient...">
         <div id="public-grid" class="grid"></div>
+        <div style="text-align: center; margin-top: 40px; padding-bottom: 40px;">
+            <a href="#" id="apk-link" style="text-decoration:none; color:#1a1c1a; font-weight:700; font-size:0.8rem; background:#eee; padding:10px 20px; border-radius:30px; border: 1px solid #ddd;">📥 Download GPharm Lagos APK</a>
+        </div>
     </div>
 </div>
 
-<!-- VIEW: ADMIN -->
+<!-- ADMIN / INVENTORY VIEW -->
 <div id="view-admin" class="view">
     <div class="container">
         <div id="insights-panel">
             <div class="stat-card"><label>Inventory Value</label><div class="value" id="stat-total">₦0</div></div>
             <div class="stat-card"><label>Low Stock</label><div class="value" id="stat-low">0</div></div>
-            <div class="stat-card"><label>Batch Count</label><div class="value" id="stat-count">0</div></div>
+            <div class="stat-card"><label>Active Batches</label><div class="value" id="stat-count">0</div></div>
         </div>
         <div id="ai-banner-admin" class="ai-banner">
             <div id="ai-content-admin"></div>
@@ -84,14 +108,14 @@
             <div style="display:flex; gap:10px;">
                 <input type="file" id="excel-file" style="display:none;" onchange="window.handleExcelUpload(this)">
                 <button class="nav-btn" onclick="document.getElementById('excel-file').click()">Import Excel</button>
-                <button class="nav-btn" style="background:var(--gold); color:white;" onclick="window.openAddModal()">+ Add Item</button>
+                <button class="nav-btn" style="background:var(--gold); color:white; border:none;" onclick="window.openAddModal()">+ Add Item</button>
             </div>
         </div>
         <div id="admin-grid" class="grid"></div>
     </div>
 </div>
 
-<!-- FLOATING CART -->
+<!-- FLOATING CART BAR -->
 <div id="public-cart-bar" onclick="window.openPublicCart()">
     <span style="font-weight: 700;">🛒 View Cart (<span id="cart-count">0</span>)</span>
     <span id="cart-sum" style="font-weight: 700;">₦0</span>
@@ -100,35 +124,42 @@
 <!-- MODAL: CHECKOUT -->
 <div class="modal" id="modal-checkout">
     <div class="modal-content">
-        <h2 style="margin-bottom:1rem; color:var(--green-deep);">Secure Checkout</h2>
-        <div id="modal-cart-items" style="margin-bottom:1.5rem;"></div>
-        <div class="form-group"><label>Receiver Name</label><input type="text" id="order-name"></div>
-        <div class="form-group"><label>Lagos Phone (11-Digits)</label><input type="tel" id="order-phone" maxlength="11"></div>
-        <div class="form-group"><label>Delivery Address</label><input type="text" id="order-address"></div>
+        <h2 style="margin-bottom:1rem; color:var(--green-deep); font-family:'Playfair Display';">Checkout Order</h2>
+        <div id="modal-cart-items" style="margin-bottom:1.5rem; border-bottom: 1px solid #eee;"></div>
+        <div class="form-group"><label>Receiver Name</label><input type="text" id="order-name" placeholder="Full Name"></div>
+        <div class="form-group"><label>Lagos Phone (11-Digits)</label><input type="tel" id="order-phone" maxlength="11" placeholder="080..."></div>
+        <div class="form-group"><label>Delivery Address</label><input type="text" id="order-address" placeholder="Apartment, Street, Lagos Area"></div>
         <button class="btn-primary" onclick="window.checkoutPublic()">Confirm Order via WhatsApp</button>
-        <button onclick="window.closeModal('modal-checkout')" style="width:100%; margin-top:10px; background:none; border:none; cursor:pointer; color:#888;">Cancel</button>
+        <button onclick="window.closeModal('modal-checkout')" style="width:100%; margin-top:10px; background:none; border:none; cursor:pointer; color:#888;">Cancel & Continue Shopping</button>
     </div>
 </div>
 
-<!-- MODAL: ADD -->
-<div class="modal" id="modal-add" style="align-items: center;">
-    <div class="modal-content" style="border-radius: 20px; position:relative; bottom:auto;">
-        <h2>New Batch Entry</h2><br>
-        <div class="form-group"><label>Brand Name</label><input type="text" id="m-name"></div>
-        <div class="form-group"><label>API (Molecule)</label><input type="text" id="m-api"></div>
+<!-- MODAL: MANUAL ADD -->
+<div class="modal" id="modal-add" style="align-items: center; display: none;">
+    <div class="modal-content" style="border-radius: 20px; position:relative; bottom:auto; width: 90%; max-width: 500px;">
+        <h2 style="font-family:'Playfair Display'; margin-bottom: 1rem; color: var(--green-deep);">Manual Stock Entry</h2>
+        <div class="form-group"><label>Brand Name</label><input type="text" id="m-name" placeholder="e.g. Lonart DS"></div>
+        <div class="form-group"><label>API Ingredient</label><input type="text" id="m-api" placeholder="e.g. Artemether"></div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div class="form-group"><label>Price (₦)</label><input type="number" id="m-price"></div>
-            <div class="form-group"><label>Qty</label><input type="number" id="m-stock"></div>
+            <div class="form-group"><label>Price (₦)</label><input type="number" id="m-price" placeholder="0"></div>
+            <div class="form-group"><label>Quantity</label><input type="number" id="m-stock" placeholder="0"></div>
         </div>
         <div class="form-group">
             <label>Category</label>
-            <select id="m-cat"><option>Analgesics</option><option>Antibiotics</option><option>Antimalarials</option><option>Supplements</option></select>
+            <select id="m-cat">
+                <option value="Analgesics">Analgesics</option><option value="Antibiotics">Antibiotics</option>
+                <option value="Antimalarials">Antimalarials</option><option value="Supplements">Supplements</option>
+            </select>
         </div>
-        <div class="form-group"><label><input type="checkbox" id="m-pom"> Prescription Required</label></div>
-        <button class="btn-primary" onclick="window.saveManualProduct()">Save to Cloud</button>
-        <button onclick="window.closeModal('modal-add')" style="width:100%; margin-top:10px; border:none; background:none; cursor:pointer;">Cancel</button>
+        <div class="form-group"><label style="cursor:pointer; display:flex; align-items:center; gap:8px;"><input type="checkbox" id="m-pom" style="width:auto;"> Prescription Required (POM)</label></div>
+        <button class="btn-primary" onclick="window.saveManualProduct()">Save to Cloud Database</button>
+        <button onclick="window.closeModal('modal-add')" style="width:100%; margin-top:10px; border:none; background:none; cursor:pointer; color:#888;">Cancel</button>
     </div>
 </div>
+
+<footer>
+    <p>&copy; <span id="footer-year"></span> GPharm Lagos. Verified Pharmaceutical Service.</p>
+</footer>
 
 <script src="app.js"></script>
 </body>
